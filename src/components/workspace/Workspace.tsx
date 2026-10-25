@@ -17,7 +17,8 @@ import {
   SupportedLanguage, 
   ExecutionResult, 
   Submission, 
-  TestCaseResult 
+  TestCaseResult,
+  TestCase 
 } from '../../types';
 import { runnerRegistry } from '../../engine/runnerRegistry';
 import { StorageService } from '../../lib/storage/storageService';
@@ -28,6 +29,7 @@ import { SubmissionsTab } from './SubmissionsTab';
 import { AiTutorPanel } from './AiTutorPanel';
 import { CodeEditor } from './CodeEditor';
 import { TestcasePanel } from './TestcasePanel';
+import { InterviewTimer } from './InterviewTimer';
 
 interface WorkspaceProps {
   problem: Problem;
@@ -46,6 +48,13 @@ export const Workspace: React.FC<WorkspaceProps> = ({
   const [language, setLanguage] = useState<SupportedLanguage>('javascript');
   const [code, setCode] = useState<string>('');
   const [fontSize, setFontSize] = useState<number>(14);
+
+  // Focus / Zen / Fullscreen modes
+  const [isZenMode, setIsZenMode] = useState<boolean>(false);
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+
+  // Active test cases (sample cases + custom user cases)
+  const [activeTestCases, setActiveTestCases] = useState<TestCase[]>(problem.sampleTestCases);
 
   // Bottom test panel
   const [bottomTab, setBottomTab] = useState<'testcases' | 'result' | 'console'>('testcases');
@@ -74,6 +83,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
 
       const subs = await StorageService.getSubmissions(problem.id);
       setSubmissions(subs);
+      setActiveTestCases(problem.sampleTestCases);
     }
 
     loadSavedCode();
@@ -101,7 +111,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
     }
   };
 
-  // Run visible sample test cases
+  // Run sample + custom test cases
   const handleRunCode = async () => {
     if (isRunning || isSubmitting) return;
 
@@ -113,7 +123,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
       const res = await runner.execute(
         code,
         problem.functionName,
-        problem.sampleTestCases,
+        activeTestCases,
         problem.timeLimitMs
       );
 
@@ -127,7 +137,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
       setExecutionResult({
         status: 'RUNTIME_ERROR',
         passedTests: 0,
-        totalTests: problem.sampleTestCases.length,
+        totalTests: activeTestCases.length,
         totalTimeMs: 0,
         testCaseResults: [],
         stdout: [],
@@ -138,7 +148,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
     }
   };
 
-  // Submit against ALL test cases (sample + hidden edge cases)
+  // Submit against ALL test cases (sample + custom + hidden edge cases)
   const handleSubmitCode = async () => {
     if (isRunning || isSubmitting) return;
 
@@ -147,7 +157,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
 
     try {
       const allTestCases = [
-        ...problem.sampleTestCases,
+        ...activeTestCases,
         ...(problem.hiddenTestCases || [])
       ];
 
@@ -194,10 +204,9 @@ export const Workspace: React.FC<WorkspaceProps> = ({
       setSubmissions((prev) => [newSubmission, ...prev]);
 
       if (isAccepted) {
-        // Confetti celebration blast
         confetti({
-          particleCount: 120,
-          spread: 70,
+          particleCount: 130,
+          spread: 75,
           origin: { y: 0.6 }
         });
         if (onProblemSolved) {
@@ -229,34 +238,47 @@ export const Workspace: React.FC<WorkspaceProps> = ({
     <div className="flex flex-col h-[calc(100vh-3.5rem)] bg-[#1a1a1a] select-none">
       {/* Workspace Top Toolbar */}
       <div className="h-10 px-4 border-b border-[#2e2e2e] bg-[#212121] flex items-center justify-between text-xs">
-        <button
-          onClick={onBack}
-          className="flex items-center space-x-1.5 text-gray-400 hover:text-white font-medium transition"
-        >
-          <ChevronLeft className="w-4 h-4" />
-          <span>Problem List</span>
-        </button>
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={onBack}
+            className="flex items-center space-x-1.5 text-gray-400 hover:text-white font-medium transition"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            <span>Problem List</span>
+          </button>
 
-        <div className="flex items-center space-x-2">
-          <span className="font-semibold text-gray-300">{problem.title}</span>
-          <span className="text-gray-500">•</span>
-          <span className={`font-semibold ${
-            problem.difficulty === 'Easy' ? 'text-emerald-400' :
-            problem.difficulty === 'Medium' ? 'text-amber-400' : 'text-rose-400'
-          }`}>
-            {problem.difficulty}
-          </span>
+          <div className="hidden sm:flex items-center space-x-2 border-l border-[#333333] pl-3">
+            <span className="font-semibold text-gray-300">{problem.title}</span>
+            <span className="text-gray-500">•</span>
+            <span className={`font-semibold ${
+              problem.difficulty === 'Easy' ? 'text-emerald-400' :
+              problem.difficulty === 'Medium' ? 'text-amber-400' : 'text-rose-400'
+            }`}>
+              {problem.difficulty}
+            </span>
+          </div>
         </div>
 
-        <div className="text-gray-400 font-mono text-[11px]">
-          Shortcuts: <kbd className="bg-[#2d2d2d] px-1.5 py-0.5 rounded text-gray-300">Ctrl+Enter</kbd> Run
+        {/* Mock Interview Timer & Controls */}
+        <div className="flex items-center space-x-3">
+          <InterviewTimer
+            isZenMode={isZenMode}
+            onToggleZenMode={() => setIsZenMode(!isZenMode)}
+            onTimeExpired={() => {
+              alert('⏰ Interview time is up! Submit your solution to review your performance.');
+            }}
+          />
+
+          <div className="text-gray-400 font-mono text-[11px] hidden md:inline">
+            <kbd className="bg-[#2d2d2d] px-1.5 py-0.5 rounded text-gray-300">Ctrl+Enter</kbd> Run
+          </div>
         </div>
       </div>
 
       {/* Main Split Body: Left Pane & Right Pane */}
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
         {/* LEFT PANE: Problem Description / Hints / Solutions / Submissions / AI Tutor */}
-        <div className="w-full md:w-1/2 flex flex-col border-r border-[#2e2e2e] bg-[#1e1e1e]">
+        <div className={`w-full md:w-1/2 flex flex-col border-r border-[#2e2e2e] bg-[#1e1e1e] ${isZenMode ? 'hidden' : ''}`}>
           {/* Left Tabs Bar */}
           <div className="flex items-center space-x-1 px-3 h-10 border-b border-[#2e2e2e] bg-[#242424] overflow-x-auto">
             <button
@@ -335,13 +357,17 @@ export const Workspace: React.FC<WorkspaceProps> = ({
                 language={language}
                 lastFailedTestCase={lastFailedTestCase}
                 onOpenSettings={onOpenSettings}
+                onApplyTranslatedCode={(translatedCode, targetL) => {
+                  setLanguage(targetL);
+                  setCode(translatedCode);
+                }}
               />
             )}
           </div>
         </div>
 
         {/* RIGHT PANE: Code Editor & Test Execution */}
-        <div className="w-full md:w-1/2 flex flex-col bg-[#1e1e1e]">
+        <div className={`flex flex-col bg-[#1e1e1e] ${isZenMode ? 'w-full' : 'w-full md:w-1/2'}`}>
           {/* Top Half: Code Editor */}
           <div className="h-[55%] flex flex-col overflow-hidden">
             <CodeEditor
@@ -355,18 +381,22 @@ export const Workspace: React.FC<WorkspaceProps> = ({
               isRunning={isRunning || isSubmitting}
               fontSize={fontSize}
               onFontSizeChange={setFontSize}
+              isFullscreen={isFullscreen}
+              onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
             />
           </div>
 
           {/* Bottom Half: Testcase & Result Panel */}
           <div className="h-[45%] flex flex-col overflow-hidden">
             <TestcasePanel
-              testCases={problem.sampleTestCases}
+              testCases={activeTestCases}
               executionResult={executionResult}
               isRunning={isRunning || isSubmitting}
               activeTab={bottomTab}
               onTabChange={setBottomTab}
               paramNames={problem.paramNames || ['nums', 'target']}
+              language={language}
+              onUpdateTestCases={(newCases) => setActiveTestCases(newCases)}
             />
           </div>
 

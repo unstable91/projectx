@@ -6,16 +6,20 @@ import { ProblemList } from './components/problems/ProblemList';
 import { Workspace } from './components/workspace/Workspace';
 import { AiProblemGeneratorModal } from './components/ai/AiProblemGeneratorModal';
 import { SettingsModal } from './components/settings/SettingsModal';
+import { StudyPlansView } from './components/study/StudyPlansView';
+import { ActivityHeatmap } from './components/profile/ActivityHeatmap';
 import { StorageService } from './lib/storage/storageService';
 import { GeminiService } from './lib/gemini/geminiService';
 import { getSupabaseClient } from './lib/supabase/supabaseClient';
-import { Difficulty, Problem, UserProfile, UserProgress } from './types';
+import { Difficulty, Problem, Submission, UserProfile, UserProgress } from './types';
+import { StudyPlan } from './data/studyPlans';
 
 export function App() {
-  const [currentView, setCurrentView] = useState<'problems' | 'workspace'>('problems');
+  const [currentView, setCurrentView] = useState<'problems' | 'workspace' | 'study'>('problems');
   const [activeProblem, setActiveProblem] = useState<Problem | null>(null);
 
   const [problems, setProblems] = useState<Problem[]>([]);
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [userProfile, setUserProfile] = useState<UserProfile>({
     id: 'user-1',
     username: 'AlgoCoder',
@@ -36,6 +40,7 @@ export function App() {
   const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty | 'All'>('All');
   const [selectedStatus, setSelectedStatus] = useState<'All' | 'solved' | 'attempted' | 'todo'>('All');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [activeStudyPlan, setActiveStudyPlan] = useState<StudyPlan | null>(null);
 
   // Modals
   const [isAiGeneratorOpen, setIsAiGeneratorOpen] = useState(false);
@@ -49,6 +54,9 @@ export function App() {
   const loadData = async () => {
     const loadedProblems = await StorageService.getProblems();
     setProblems(loadedProblems);
+
+    const loadedSubs = await StorageService.getSubmissions();
+    setSubmissions(loadedSubs);
 
     const loadedProfile = await StorageService.getUserProfile();
     setUserProfile(loadedProfile);
@@ -80,11 +88,21 @@ export function App() {
     handleSelectProblem(newProblem);
   };
 
+  const handleSelectStudyPlan = (plan: StudyPlan) => {
+    setActiveStudyPlan(plan);
+    setCurrentView('problems');
+  };
+
   // Derive categories
   const categories = Array.from(new Set(problems.map((p) => p.category))).sort();
 
   // Filtered problems list
   const filteredProblems = problems.filter((p) => {
+    // If filtering by study plan
+    if (activeStudyPlan) {
+      if (!activeStudyPlan.problemSlugs.includes(p.slug)) return false;
+    }
+
     // Search
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -121,8 +139,14 @@ export function App() {
       <Navbar
         currentView={currentView}
         onNavigate={(view) => {
-          if (view === 'problems') setCurrentView('problems');
-          else if (view === 'generator') setIsAiGeneratorOpen(true);
+          if (view === 'problems') {
+            setActiveStudyPlan(null);
+            setCurrentView('problems');
+          } else if (view === 'study') {
+            setCurrentView('study');
+          } else if (view === 'generator') {
+            setIsAiGeneratorOpen(true);
+          }
         }}
         userProfile={userProfile}
         isSupabaseConnected={isSupabaseConnected}
@@ -131,9 +155,16 @@ export function App() {
         onOpenGenerator={() => setIsAiGeneratorOpen(true)}
       />
 
-      {/* Main View */}
+      {/* Main View Router */}
       <main className="flex-1">
-        {currentView === 'problems' || !activeProblem ? (
+        {currentView === 'study' ? (
+          <StudyPlansView
+            progressMap={progressMap}
+            problems={problems}
+            onSelectPlan={handleSelectStudyPlan}
+            onSelectProblem={handleSelectProblem}
+          />
+        ) : currentView === 'problems' || !activeProblem ? (
           <div className="max-w-7xl mx-auto px-4 py-8">
             {/* Top Dashboard Analytics */}
             <ProblemStats
@@ -141,6 +172,30 @@ export function App() {
               userProfile={userProfile}
               progressMap={progressMap}
             />
+
+            {/* 365-Day Activity Heatmap */}
+            <ActivityHeatmap
+              submissions={submissions}
+              userProfile={userProfile}
+            />
+
+            {/* Active Study Plan Banner if filtered */}
+            {activeStudyPlan && (
+              <div className="p-4 mb-4 rounded-xl bg-[#252525] border border-amber-500/40 flex items-center justify-between">
+                <div>
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400">
+                    Active Study Plan Filter
+                  </span>
+                  <h3 className="text-sm font-bold text-white mt-0.5">{activeStudyPlan.title}</h3>
+                </div>
+                <button
+                  onClick={() => setActiveStudyPlan(null)}
+                  className="px-3 py-1 rounded bg-[#333333] hover:bg-[#444444] text-xs font-semibold text-gray-300"
+                >
+                  Clear Plan Filter
+                </button>
+              </div>
+            )}
 
             {/* Filter Bar */}
             <ProblemFilter
@@ -194,6 +249,7 @@ export function App() {
         onConfigUpdated={() => {
           loadData();
         }}
+        onOpenGenerator={() => setIsAiGeneratorOpen(true)}
       />
     </div>
   );

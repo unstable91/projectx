@@ -1,6 +1,16 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import Editor, { OnMount } from '@monaco-editor/react';
-import { RotateCcw, Play, CheckCircle2, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
+import { 
+  RotateCcw, 
+  Play, 
+  CheckCircle2, 
+  ZoomIn, 
+  ZoomOut, 
+  Maximize2, 
+  Minimize2, 
+  AlignLeft, 
+  Palette 
+} from 'lucide-react';
 import { SupportedLanguage } from '../../types';
 import { runnerRegistry } from '../../engine/runnerRegistry';
 
@@ -15,6 +25,8 @@ interface CodeEditorProps {
   isRunning: boolean;
   fontSize: number;
   onFontSizeChange: (size: number) => void;
+  isFullscreen?: boolean;
+  onToggleFullscreen?: () => void;
 }
 
 export const CodeEditor: React.FC<CodeEditorProps> = ({
@@ -27,9 +39,12 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
   onSubmitCode,
   isRunning,
   fontSize,
-  onFontSizeChange
+  onFontSizeChange,
+  isFullscreen = false,
+  onToggleFullscreen
 }) => {
   const editorRef = useRef<any>(null);
+  const [editorTheme, setEditorTheme] = useState<'vs-dark' | 'hc-black' | 'vs'>('vs-dark');
 
   const handleEditorDidMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
@@ -47,10 +62,17 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
     );
   };
 
+  // 1-Click Code Formatter
+  const handleFormatCode = () => {
+    if (editorRef.current) {
+      editorRef.current.getAction('editor.action.formatDocument')?.run();
+    }
+  };
+
   const supportedLangs = runnerRegistry.getSupportedLanguages();
 
   return (
-    <div className="flex flex-col h-full bg-[#1e1e1e]">
+    <div className={`flex flex-col h-full bg-[#1e1e1e] ${isFullscreen ? 'fixed inset-0 z-50' : ''}`}>
       {/* Editor Header Bar */}
       <div className="flex items-center justify-between px-3 h-10 border-b border-[#2e2e2e] bg-[#242424] select-none">
         {/* Language Selector */}
@@ -67,12 +89,33 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
             ))}
           </select>
           <span className="text-[11px] text-gray-400 hidden sm:inline">
-            Client-Side Sandbox
+            Zero-Dependency WASM Sandbox
           </span>
         </div>
 
         {/* Toolbar Controls */}
         <div className="flex items-center space-x-1.5">
+          {/* Theme Selector */}
+          <select
+            value={editorTheme}
+            onChange={(e) => setEditorTheme(e.target.value as any)}
+            title="Monaco Editor Theme"
+            className="bg-[#1a1a1a] border border-[#3a3a3a] text-[11px] text-gray-300 rounded px-1.5 py-0.5"
+          >
+            <option value="vs-dark">Dark Theme</option>
+            <option value="hc-black">High Contrast</option>
+            <option value="vs">Light Theme</option>
+          </select>
+
+          {/* Format Code */}
+          <button
+            onClick={handleFormatCode}
+            title="Format Code (Auto-indent)"
+            className="p-1 rounded text-gray-400 hover:text-gray-200 hover:bg-[#333333] transition"
+          >
+            <AlignLeft className="w-3.5 h-3.5" />
+          </button>
+
           {/* Font Controls */}
           <button
             onClick={() => onFontSizeChange(Math.max(12, fontSize - 1))}
@@ -94,10 +137,21 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
           <button
             onClick={onResetCode}
             title="Reset to starter boilerplate"
-            className="p-1 rounded text-gray-400 hover:text-gray-200 hover:bg-[#333333] transition ml-1"
+            className="p-1 rounded text-gray-400 hover:text-gray-200 hover:bg-[#333333] transition"
           >
             <RotateCcw className="w-3.5 h-3.5" />
           </button>
+
+          {/* Fullscreen Toggle */}
+          {onToggleFullscreen && (
+            <button
+              onClick={onToggleFullscreen}
+              title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen Editor'}
+              className="p-1 rounded text-gray-400 hover:text-gray-200 hover:bg-[#333333] transition"
+            >
+              {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+            </button>
+          )}
         </div>
       </div>
 
@@ -107,7 +161,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
           height="100%"
           language={runnerRegistry.get(language).monacoLanguage}
           value={code}
-          theme="vs-dark"
+          theme={editorTheme}
           onChange={onChange}
           onMount={handleEditorDidMount}
           options={{

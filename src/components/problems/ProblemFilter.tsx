@@ -13,7 +13,7 @@ interface ProblemFilterProps {
   onCategoryChange: (c: string) => void;
   categories: string[];
   onPickRandom: () => void;
-  onOpenAiGenerator: () => void;
+  onOpenAiGenerator?: () => void;
 }
 
 export const ProblemFilter: React.FC<ProblemFilterProps> = ({
@@ -54,14 +54,6 @@ export const ProblemFilter: React.FC<ProblemFilterProps> = ({
           >
             <Shuffle className="w-3.5 h-3.5 text-[#ffa116]" />
             <span>Pick Random</span>
-          </button>
-
-          <button
-            onClick={onOpenAiGenerator}
-            className="flex items-center space-x-1.5 px-3.5 py-2 rounded-lg bg-gradient-to-r from-amber-500 to-[#ffa116] hover:brightness-110 text-xs font-bold text-black shadow-md shadow-[#ffa116]/20 transition"
-          >
-            <Sparkles className="w-3.5 h-3.5 fill-black" />
-            <span>AI Problem Generator</span>
           </button>
         </div>
       </div>

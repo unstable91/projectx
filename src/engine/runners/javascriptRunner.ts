@@ -95,6 +95,7 @@ self.onmessage = function(e) {
       } catch (runErr) {
         status = 'ERROR';
         error = runErr && runErr.message ? runErr.message : String(runErr);
+        currentLogs.push('[ERROR] RuntimeError (Case ' + (i + 1) + '): ' + error);
       }
       const duration = performance.now() - start;
       totalTimeMs += duration;
@@ -218,7 +219,7 @@ function ${funcName}(${paramNames.join(', ')}) {
               totalTests: testCases.length,
               totalTimeMs: 0,
               testCaseResults: [],
-              stdout: [],
+              stdout: [`[ERROR] Syntax / Compilation Error: ${data.error}`],
               errorMessage: data.error
             });
             return;
@@ -255,7 +256,11 @@ function ${funcName}(${paramNames.join(', ')}) {
 
               // Verify against expected output using deepCompare
               isPass = deepCompare(res.actualOutput, tc.expectedOutput);
-              if (isPass) passedCount++;
+              if (isPass) {
+                passedCount++;
+              } else {
+                res.stdout.push(`[FAILED] Case ${i + 1}: Expected ${JSON.stringify(tc.expectedOutput)}, but got ${JSON.stringify(res.actualOutput)}`);
+              }
 
               return {
                 testCaseIndex: i,

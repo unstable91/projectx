@@ -72,10 +72,14 @@ export class PythonRunner implements LanguageRunner {
             } else {
               status = 'FAILED';
               errorMessage = 'Output did not match expected result';
+              caseLogs.push(`[FAILED] Case ${i + 1}: Expected ${JSON.stringify(tc.expectedOutput)}, but got ${JSON.stringify(actualOutput)}`);
+              allStdout.push(`[FAILED] Case ${i + 1}: Expected ${JSON.stringify(tc.expectedOutput)}, but got ${JSON.stringify(actualOutput)}`);
             }
           } catch (err: any) {
             status = 'ERROR';
             errorMessage = err.message || String(err);
+            caseLogs.push(`[ERROR] ${errorMessage}`);
+            allStdout.push(`[ERROR] Case ${i + 1}: ${errorMessage}`);
           }
 
           fullResults.push({
@@ -96,16 +100,17 @@ export class PythonRunner implements LanguageRunner {
 
       const totalTime = Math.round(performance.now() - start);
       const allPassed = passedCount === testCases.length;
-      const hasError = fullResults.some((r) => r.status === 'ERROR');
+      const errorResult = fullResults.find((r) => r.status === 'ERROR');
 
       return {
-        status: hasError ? 'RUNTIME_ERROR' : allPassed ? 'ACCEPTED' : 'WRONG_ANSWER',
+        status: errorResult ? 'RUNTIME_ERROR' : allPassed ? 'ACCEPTED' : 'WRONG_ANSWER',
         passedTests: passedCount,
         totalTests: testCases.length,
         totalTimeMs: totalTime,
         memoryKb: 1350,
         testCaseResults: fullResults,
-        stdout: allStdout
+        stdout: allStdout,
+        errorMessage: errorResult?.errorMessage
       };
 
     } catch (err: any) {

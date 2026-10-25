@@ -63,7 +63,7 @@ export class StorageService {
       }
     }
 
-    // LocalStorage fallback
+    // LocalStorage fallback & auto-merge
     const raw = localStorage.getItem(PROBLEMS_KEY);
     if (!raw) {
       localStorage.setItem(PROBLEMS_KEY, JSON.stringify(DEFAULT_PROBLEMS));
@@ -71,7 +71,19 @@ export class StorageService {
     }
 
     try {
-      const parsed = JSON.parse(raw);
+      const parsed: Problem[] = JSON.parse(raw);
+      // Merge any new default problems not yet in local storage
+      const existingSlugs = new Set(parsed.map((p) => p.slug));
+      let updated = false;
+      DEFAULT_PROBLEMS.forEach((dp) => {
+        if (!existingSlugs.has(dp.slug)) {
+          parsed.push(dp);
+          updated = true;
+        }
+      });
+      if (updated) {
+        localStorage.setItem(PROBLEMS_KEY, JSON.stringify(parsed));
+      }
       return parsed.length > 0 ? parsed : DEFAULT_PROBLEMS;
     } catch {
       return DEFAULT_PROBLEMS;

@@ -234,4 +234,68 @@ Explain concisely in 2-4 sentences:
     const response = await model.generateContent(prompt);
     return response.response.text();
   }
+
+  /**
+   * Translates code between languages (e.g. JavaScript -> Python or C++ -> Java)
+   */
+  public static async translateCode(
+    sourceCode: string,
+    fromLang: string,
+    toLang: string,
+    problemTitle: string
+  ): Promise<{ translatedCode: string; notes: string }> {
+    const genAI = this.getClient();
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-2.5-flash',
+      generationConfig: { responseMimeType: 'application/json' }
+    });
+
+    const prompt = `You are an expert polyglot software engineer.
+Translate this ${fromLang} solution for problem "${problemTitle}" into idiomatic ${toLang}.
+Source Code:
+\`\`\`${fromLang}
+${sourceCode}
+\`\`\`
+
+Return a strictly valid JSON object conforming to:
+{
+  "translatedCode": "string (the clean code in ${toLang})",
+  "notes": "string (1-2 sentences on key language idiom differences)"
+}`;
+
+    const response = await model.generateContent(prompt);
+    return JSON.parse(response.response.text());
+  }
+
+  /**
+   * Suggests tricky algorithmic edge cases that might break code.
+   */
+  public static async suggestEdgeCases(
+    problem: Problem,
+    userCode: string
+  ): Promise<Array<{ title: string; input: string; reason: string }>> {
+    const genAI = this.getClient();
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-2.5-flash',
+      generationConfig: { responseMimeType: 'application/json' }
+    });
+
+    const prompt = `For LeetCode problem "${problem.title}", analyze this user code and generate 3 tricky edge cases that often cause Wrong Answer or TLE.
+User Code:
+\`\`\`
+${userCode}
+\`\`\`
+
+Return a strictly valid JSON array of objects:
+[
+  {
+    "title": "Short title, e.g. Single element or Duplicates",
+    "input": "Sample input representation",
+    "reason": "Why this edge case could fail"
+  }
+]`;
+
+    const response = await model.generateContent(prompt);
+    return JSON.parse(response.response.text());
+  }
 }

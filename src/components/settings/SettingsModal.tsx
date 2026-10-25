@@ -10,7 +10,10 @@ import {
   AlertCircle, 
   CheckCircle2, 
   Code, 
-  Loader2 
+  Loader2,
+  Cpu,
+  Sparkles,
+  Coffee
 } from 'lucide-react';
 import { GeminiService } from '../../lib/gemini/geminiService';
 import { 
@@ -23,14 +26,16 @@ interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfigUpdated: () => void;
+  onOpenGenerator?: () => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   isOpen,
   onClose,
-  onConfigUpdated
+  onConfigUpdated,
+  onOpenGenerator
 }) => {
-  const [activeTab, setActiveTab] = useState<'gemini' | 'supabase' | 'schema'>('gemini');
+  const [activeTab, setActiveTab] = useState<'gemini' | 'supabase' | 'wasm' | 'schema'>('gemini');
 
   // Gemini state
   const [geminiKey, setGeminiKey] = useState('');
@@ -79,6 +84,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     } finally {
       setIsTestingSupabase(false);
       onConfigUpdated();
+    }
+  };
+
+  const handleLaunchGenerator = () => {
+    onClose();
+    if (onOpenGenerator) {
+      onOpenGenerator();
     }
   };
 
@@ -139,12 +151,12 @@ CREATE POLICY "Allow public read submissions" ON public.submissions FOR SELECT U
 
   return (
     <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-[#1e1e1e] border border-[#3a3a3a] rounded-2xl max-w-xl w-full max-h-[85vh] flex flex-col overflow-hidden shadow-2xl">
+      <div className="bg-[#1e1e1e] border border-[#3a3a3a] rounded-2xl max-w-xl w-full max-h-[88vh] flex flex-col overflow-hidden shadow-2xl">
         {/* Header */}
         <div className="p-4 bg-[#252525] border-b border-[#333333] flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Settings className="w-5 h-5 text-[#ffa116]" />
-            <h2 className="text-sm font-bold text-white">Platform Settings & Credentials</h2>
+            <h2 className="text-sm font-bold text-white">Platform Settings & Options</h2>
           </div>
           <button
             onClick={onClose}
@@ -155,10 +167,10 @@ CREATE POLICY "Allow public read submissions" ON public.submissions FOR SELECT U
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex items-center space-x-2 px-4 pt-3 border-b border-[#2e2e2e] bg-[#222222]">
+        <div className="flex items-center space-x-2 px-4 pt-3 border-b border-[#2e2e2e] bg-[#222222] overflow-x-auto">
           <button
             onClick={() => setActiveTab('gemini')}
-            className={`flex items-center space-x-1.5 pb-2.5 text-xs font-semibold border-b-2 transition ${
+            className={`flex items-center space-x-1.5 pb-2.5 text-xs font-semibold border-b-2 whitespace-nowrap transition ${
               activeTab === 'gemini'
                 ? 'border-[#ffa116] text-[#ffa116]'
                 : 'border-transparent text-gray-400 hover:text-gray-200'
@@ -170,7 +182,7 @@ CREATE POLICY "Allow public read submissions" ON public.submissions FOR SELECT U
 
           <button
             onClick={() => setActiveTab('supabase')}
-            className={`flex items-center space-x-1.5 pb-2.5 text-xs font-semibold border-b-2 transition ${
+            className={`flex items-center space-x-1.5 pb-2.5 text-xs font-semibold border-b-2 whitespace-nowrap transition ${
               activeTab === 'supabase'
                 ? 'border-[#ffa116] text-[#ffa116]'
                 : 'border-transparent text-gray-400 hover:text-gray-200'
@@ -181,8 +193,20 @@ CREATE POLICY "Allow public read submissions" ON public.submissions FOR SELECT U
           </button>
 
           <button
+            onClick={() => setActiveTab('wasm')}
+            className={`flex items-center space-x-1.5 pb-2.5 text-xs font-semibold border-b-2 whitespace-nowrap transition ${
+              activeTab === 'wasm'
+                ? 'border-[#ffa116] text-[#ffa116]'
+                : 'border-transparent text-gray-400 hover:text-gray-200'
+            }`}
+          >
+            <Coffee className="w-3.5 h-3.5 text-amber-400" />
+            <span>Java & WASM Runtime</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('schema')}
-            className={`flex items-center space-x-1.5 pb-2.5 text-xs font-semibold border-b-2 transition ${
+            className={`flex items-center space-x-1.5 pb-2.5 text-xs font-semibold border-b-2 whitespace-nowrap transition ${
               activeTab === 'schema'
                 ? 'border-[#ffa116] text-[#ffa116]'
                 : 'border-transparent text-gray-400 hover:text-gray-200'
@@ -214,7 +238,7 @@ CREATE POLICY "Allow public read submissions" ON public.submissions FOR SELECT U
                 </p>
               </div>
 
-              <div className="flex items-center justify-between pt-2">
+              <div className="flex items-center justify-between pt-1">
                 <a
                   href="https://aistudio.google.com/app/apikey"
                   target="_blank"
@@ -239,6 +263,28 @@ CREATE POLICY "Allow public read submissions" ON public.submissions FOR SELECT U
                   )}
                 </button>
               </div>
+
+              {/* AI Features & Generator Section */}
+              <div className="mt-4 pt-4 border-t border-[#2e2e2e] space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-bold text-white text-xs flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                      AI Problem Generator
+                    </h4>
+                    <p className="text-[11px] text-gray-400 mt-0.5">
+                      Synthesize new algorithmic problems with full test suites and Big-O hints.
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleLaunchGenerator}
+                    className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 font-semibold transition"
+                  >
+                    <Sparkles className="w-3 h-3 text-amber-400" />
+                    <span>Launch Generator</span>
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 
@@ -246,7 +292,7 @@ CREATE POLICY "Allow public read submissions" ON public.submissions FOR SELECT U
           {activeTab === 'supabase' && (
             <div className="space-y-4">
               <p className="text-gray-400 text-xs">
-                Connect your Supabase project to persist problems, user profiles, submissions, and progress across devices.
+                Connect your Supabase project to persist problems, user profiles, submissions, and progress across devices. If unconfigured, AlgoForge operates in 100% offline LocalStorage mode.
               </p>
 
               <div>
@@ -321,7 +367,80 @@ CREATE POLICY "Allow public read submissions" ON public.submissions FOR SELECT U
             </div>
           )}
 
-          {/* TAB 3: SQL SCHEMA */}
+          {/* TAB 3: JAVA & WASM ENGINES */}
+          {activeTab === 'wasm' && (
+            <div className="space-y-4">
+              <div className="p-3 bg-[#151515] border border-[#2a2a2a] rounded-xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Coffee className="w-4 h-4 text-amber-400" />
+                    <span className="font-bold text-white text-xs">Java WASM Compiler & Engine</span>
+                  </div>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                    Client-Side Active
+                  </span>
+                </div>
+                <p className="text-[11px] text-gray-400 leading-relaxed">
+                  Compiles and executes Java <code className="text-amber-300">class Solution</code> in the browser without server dependencies or containers.
+                </p>
+                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#252525] text-[11px]">
+                  <div>
+                    <span className="text-gray-500 block">Compiler Diagnostics:</span>
+                    <span className="text-gray-300 font-mono">OpenJDK javac format (^)</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 block">Runtime Environment:</span>
+                    <span className="text-gray-300 font-mono">JVM Stack Trace Simulator</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 block">Watchdog Timeout:</span>
+                    <span className="text-gray-300 font-mono">2000 ms</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 block">Memory Ceiling:</span>
+                    <span className="text-gray-300 font-mono">128 MB</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Supported Java Features */}
+              <div className="space-y-2">
+                <h4 className="font-semibold text-gray-200 text-xs">Supported Java Standard Libraries</h4>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    'HashMap', 'HashSet', 'ArrayList', 'ArrayDeque', 'Stack',
+                    'int[]', 'int[][]', 'String[]', 'StringBuilder', 'Math',
+                    'Arrays.sort()', 'Integer.parseInt()', 'System.out.println'
+                  ].map((feat) => (
+                    <span key={feat} className="px-2 py-0.5 bg-[#252525] border border-[#333333] rounded text-[11px] font-mono text-gray-300">
+                      {feat}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Other Language Engines */}
+              <div className="space-y-2 pt-2 border-t border-[#2e2e2e]">
+                <h4 className="font-semibold text-gray-200 text-xs">Other Polyglot Engines</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <div className="p-2.5 rounded-lg bg-[#181818] border border-[#2a2a2a]">
+                    <div className="font-semibold text-white text-[11px]">JavaScript</div>
+                    <div className="text-[10px] text-emerald-400">Worker Sandbox</div>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-[#181818] border border-[#2a2a2a]">
+                    <div className="font-semibold text-white text-[11px]">Python 3</div>
+                    <div className="text-[10px] text-emerald-400">Custom WASM Core</div>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-[#181818] border border-[#2a2a2a]">
+                    <div className="font-semibold text-white text-[11px]">C++ 17</div>
+                    <div className="text-[10px] text-emerald-400">Custom WASM Core</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4: SQL SCHEMA */}
           {activeTab === 'schema' && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
